@@ -9,6 +9,8 @@ The following frameworks are discussed.
 
 ### 1. From Linear to Generalized to Total Regression
 
+![GLM Result](Generalized%20Linear%20Models%20-%20Total%20Least%20Squares/Output%20GLM.png)
+
 **Linear Regression** starts with the classical Gauss normal equations, solving `y = Ab` via QR decomposition. We reinterpret this as maximum likelihood estimation (MLE) where the data itself is simply a pointwise mean over time of a gaussian distribution, the more statistical way of thinking rather than treating the model as some ground-truth data plus additive noise.
 
 **Generalized Linear Models (GLMs)** extend this by replacing the Gaussian assumption with other distributions from the exponential family (e.g., Gamma for positive ecological measurements), connected through a link function. The Gamma GLM with log link is particularly useful when data span multiple orders of magnitude.
@@ -18,6 +20,8 @@ The following frameworks are discussed.
 **Implementation**: Custom Python classes for each method, demonstrating QR decomposition, gradient ascent with Armijo line search, SVD-based corrections, and errors-in-variables formulations.
 
 ### 2. Bayesian Inference and Markov Chain Monte Carlo
+
+![MCMC Result](Bayesian%20Statistics%20-%20Markov%20Chain%20Monte%20Carlo%20Model/Output%20MCMC.png)
 
 **Bayesian Statistics** treats parameters as distributions rather than point estimates. For tree growth modeling, we encode prior knowledge from literature, update it with field data, and obtain full posterior distributions that quantify uncertainty.
 
