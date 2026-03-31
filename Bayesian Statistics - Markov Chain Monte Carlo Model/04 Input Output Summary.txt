@@ -1,0 +1,108 @@
+========================================================
+ BAYESIAN MODEL INPUT, KNOWLEDGE AND OUTPUT IN
+ MARKOV CHAIN MONTE CARLO METHODS (MCMC)
+========================================================
+
+--------------------------------------------------------
+In General:
+--------------------------------------------------------
+
+P(theta | D) = P(theta) P(D | theta) / P(D)
+posterior    = prior    likelihood     evidence
+P(D)         = integral P(D | theta) P(theta) dtheta
+evidence     = integral joint probability
+
+Modelling assumptions:
+ 1) Prior      P(theta)    : Before seeing any data we assume some distribution for theta.
+			     Example: P(theta_candidate) = Normal(mu_0, sigma_0)
+ 2) likelihood P(D | theta): "If theta was this value, how probable is the observation?"
+                             Data D is fixed and assumed to stem from some distribution.
+			     The likelihood function is this chosen probability density.
+			     theta is a candidate, e.g. the mean with known standard dev..
+			     MCMC evaluates the likelihood function and updates candidates.
+
+1) and 2) determine the shape of the posterior P(theta_candidate | D), which is high
+where both likelihood (data consistent with this candidate) and the prior (candidate is plausible) are high simultaneously.
+
+--------------------------------------------------------
+INPUT (known/chosen values handed to the model):
+--------------------------------------------------------
+
+Real World Data
+  - n              number of field measurements
+  - D              the actual observed measurements {d_1, ..., d_n}
+
+MCMC method parameters
+  - N              total number of MCMC iterations
+  - N_burn_in      iterations discarded at the start (chain not yet converged)
+  - sigma_prop     proposal step size for Metropolis-Hastings
+                   (controls how far the chain jumps each step,
+                   tuned so acceptance rate is ~44% in 1D)
+
+Distribution parameters
+The following only when assuming a normal distribution, in general the distribution params
+  - sigma_obs      measurement noise, assumed known (estimated modelling assumption)
+  - mu_0           prior mean: literature-based guess about theta_true
+  - sigma_0        prior standard deviation: first guess for standard deviation
+
+--------------------------------------------------------
+UNKNOWN (what we are trying to estimate):
+--------------------------------------------------------
+  - theta_true     the true parameter of interest e.g. true mean increment in normal dist.
+Only for normal distribution:
+  - sigma_true     the true standard deviation of the data generating process;
+                   in our model we assumed sigma_true = sigma_obs (known),
+                   which is a modelling assumption that may not hold in practice,
+		   use other distribution parameters if a different one is chosen
+
+--------------------------------------------------------
+WHAT MCMC NEEDS AT EVERY STEP:
+--------------------------------------------------------
+
+  P(D) isn't needed, it appears in both numerator and denominator, hence 
+  cancels in the calculated acceptance ratio as THE central trick of MCMC.
+
+  At each iteration, the chain is at some current value theta_cur and
+  proposes a candidate theta_proposed = theta_current + normal distributed noise
+
+  We need to compare the current and proposed posteriors
+  in logarithmized form for computations (numbers become very small):
+
+  - log-likelihood: log P(D | theta_prop)  and  log P(D | theta_cur)
+  - log-prior:      log P(theta_prop)      and  log P(theta_cur)  
+
+  - log ratio:      log_r =   [log P(D|theta_prop) + log P(theta_prop)]
+                            - [log P(D|theta_cur)  + log P(theta_cur) ]
+
+  (the log ratio is a simple rearrangement of log( P(theta_prop|D) / P(theta_cur|D) ) )
+
+--------------------------------------------------------
+OUTPUT OF MARKOV CHAIN MONTE CARLO:
+--------------------------------------------------------
+  - (N - N_burn_in) samples {theta^(1), ..., theta^(N-N_burn_in)}
+    representing draws from the posterior distribution P(theta | D)
+    The chain visits values of theta proportionally to their posterior
+    probability, so the histogram of samples approximates the posterior.
+
+--------------------------------------------------------
+INFERRED FROM THE MCMC SAMPLES:
+--------------------------------------------------------
+  - theta_post     posterior mean: average of all retained samples
+  - 95% credible   2.5th and 97.5th percentiles of the sample array
+                   (No Gaussian assumption needed; works for any distribution)
+
+Only in normal distribution assumptions:
+  - sigma_post     posterior std:   standard deviation of all retained samples
+
+--------------------------------------------------------
+DIAGNOSTICS (how we know the chain is working):
+--------------------------------------------------------
+  - Acceptance rate        too high: sigma_prop too small, slow exploration
+                           too low:  sigma_prop too large, chain gets stuck
+  - Trace plot             theta vs iteration; should look like white noise
+                           after burn-in with no visible drift or trend
+  - Autocorrelation plot   correlation between samples at increasing lag (time step diff);
+                           should decay relatively quickly to zero
+  - R-hat statistic        run multiple chains from different starting points;
+                           R-hat ~ 1 means all chains converged to the same
+                           distribution

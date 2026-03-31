@@ -1,0 +1,71 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{amsmath, amssymb, booktabs}
+\pagestyle{empty}
+\begin{document}
+
+\section{Total Least Squares: Accounting for Noise in $A$}
+In the previous sections, the design matrix $A$ was assumed to be a set of "true" fixed constants. If we assume $A$ is observed with Gaussian noise $E$, such that the measured matrix is $\tilde{A} = A + E$, the OLS estimator becomes biased. To correct this, we solve the \emph{Total Least Squares} (TLS) problem by minimizing the Frobenius norm of the errors in both the features and the targets:
+\[
+    \min_{E, \varepsilon} \| [E \mid \varepsilon] \|_F^2 \quad \text{subject to} \quad (A+E)b = y + \varepsilon.
+\]
+Geometrically, this minimizes the orthogonal rather than vertical distance from the data points to the hyperplane.
+
+\subsection{The SVD Solution}
+Let $Z = [A \mid y] \in \mathbb{R}^{m \times (n+1)}$ be the augmented matrix. We compute its Singular Value Decomposition:
+\[
+    Z = U \Sigma V^\top, \quad \text{where } V = [v_1, v_2, \dots, v_{n+1}].
+\]
+The right singular vector $v_{n+1}$ corresponding to the smallest singular value $\sigma_{n+1}$ represents the direction of minimum variance in the augmented space. Partitioning this vector as $v_{n+1} = [v_A^\top \mid v_y]^\top$ where $v_A \in \mathbb{R}^n$ and $v_y \in \mathbb{R}$, the TLS solution is
+\[
+    b_{\text{TLS}} = -\frac{v_A}{v_y}.
+\]
+This solution is optimal when the noise in $A$ and $y$ is independent and identically distributed Gaussian.
+
+\section{Errors-in-Variables for GLMs}
+For the Gamma GLM, the relationship $y_i \approx \exp(a_i^\top b)$ is non-linear, so the SVD approach cannot be applied directly. Instead, we treat the "true" inputs $\hat{a}_i$ as latent variables. We assume the observed $\tilde{a}_i = \hat{a}_i + \delta_i$, where $\delta_i \sim \mathcal{N}(0, \sigma_x^2 I)$.
+
+\subsection{Joint Maximum Likelihood (Functional Model)}
+To find $b$ while accounting for $x$-errors, we maximize the joint log-likelihood of observing both $y_i$ and the noisy $\tilde{a}_i$:
+\[
+    \log \mathcal{L}(b, \{\hat{a}_i\}) = \sum_{i=1}^m \underbrace{\log p(y_i \mid \hat{a}_i, b)}_{\text{Gamma log-likelihood}} + \sum_{i=1}^m \underbrace{\log p(\tilde{a}_i \mid \hat{a}_i)}_{\text{Gaussian log-likelihood}}.
+\]
+The Gaussian term for the input error is $\log p(\tilde{a}_i \mid \hat{a}_i) = \mathrm{const} - \frac{1}{2\sigma_x^2}\|\tilde{a}_i - \hat{a}_i\|^2$. Setting $\lambda = \frac{k}{2\sigma_x^2}$ to absorb constants and reflect the ratio of precision between $y$ and $x$, and dropping all terms constant in $b$ and $\hat{a}_i$:
+\[
+    J(b, \{\hat{a}_i\}) = -k \sum_{i=1}^m \left[ \hat{a}_i^\top b + y_i e^{-\hat{a}_i^\top b} \right] - \lambda \sum_{i=1}^m \| \tilde{a}_i - \hat{a}_i \|^2.
+\]
+This is non-convex and requires simultaneous optimization over the coefficients $b$ and the corrected coordinates $\hat{a}_i$. We get
+\[
+    \frac{\partial J}{\partial b}
+    = -k \sum_{i=1}^m \hat{a}_i\!\left(1 - \frac{y_i}{\mu_i}\right)
+    = k\,\hat{A}^\top\!\left(\frac{y}{\mu} - \mathbf{1}\right),
+\]
+where $\hat{A}$ contains corrected inputs $\hat{a}_i^\top$, similar to the general Gamma GLM.
+
+\noindent Differentiating $J$ with respect to $\hat{a}_i$ (only the $i$-th Gamma and penalty term depend on $\hat{a}_i$), using $\nabla_{\hat{a}_i}\,y_i e^{-\hat{a}_i^\top b} = -y_i/\mu_i \cdot b$:
+\[
+    \frac{\partial J}{\partial \hat{a}_i}
+    = -k\,b\!\left(1 - \frac{y_i}{\mu_i}\right) + 2\lambda(\tilde{a}_i - \hat{a}_i).
+\]
+Setting this to zero yields the \emph{closed-form optimal correction} for $\hat{a}_i$ given fixed $b$:
+\[
+    \hat{a}_i^\star = \tilde{a}_i - \frac{k}{2\lambda}\!\left(1 - \frac{y_i}{\mu_i}\right) b.
+\]
+Each corrected input is shifted from the observed $\tilde{a}_i$ along the coefficient direction $b$, scaled by the relative residual $(1 - y_i/\mu_i)$ and the precision ratio $k/(2\lambda)$. When the model fits perfectly ($\mu_i = y_i$), the correction vanishes and $\hat{a}_i = \tilde{a}_i$.
+
+\subsection{Block Coordinate Descent}
+
+The closed-form $\hat{a}_i$-update means we can alternate between two steps rather than optimising over all variables simultaneously:
+
+\vspace{2mm}
+\begin{enumerate}
+    \item \textbf{$b$-step (gradient ascent).} Hold $\{\hat{a}_i\}$ fixed and ascend in $b$ using the gradient $k\,\hat{A}^\top(y/\mu - \mathbf{1})$ with Armijo backtracking.
+    \item \textbf{$\hat{a}$-step (closed form).} Hold $b$ fixed and set each $\hat{a}_i \leftarrow \tilde{a}_i - \frac{k}{2\lambda}(1 - y_i/\mu_i)\,b$.
+\end{enumerate}
+\vspace{2mm}
+
+The role of $\lambda$ is interpretable: a large $\lambda$ (high trust in $x$-measurements) keeps $\hat{a}_i \approx \tilde{a}_i$ and the model reduces to the standard Gamma GLM; a small $\lambda$ allows larger corrections to $\hat{a}_i$ at the cost of a larger $x$-penalty. The resulting algorithm is guaranteed to increase $J$ monotonically at each step (since each sub-problem is solved optimally), but convergence is to a stationary point rather than a global maximum due to non-convexity.
+
+\vspace{3mm}
+Other forms of noisy data recording are of course also possible. The logic stays the same in this case, only the penalty term (including $\lambda$) has to be adapted.
+\end{document}

@@ -1,0 +1,645 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\geometry{margin=2.5cm}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue!70!black}\bfseries,
+  commentstyle=\color{green!50!black}\itshape,
+  stringstyle=\color{orange!80!black},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=8pt,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{gray!40},
+  backgroundcolor=\color{gray!5},
+  showstringspaces=false,
+  tabsize=4
+}
+
+\title{\textbf{An Example for Bayesian Statistics}\\
+\large in Ecological Forest Modelling}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\vspace{-14mm}
+Bayesian Statistics treats probability as a before-after confidence rather
+than from the classical frequentist perspective.
+
+\section{Bayes' Theorem}
+
+Let $\theta$ denote a model parameter (e.g.\ the growth rate of a tree
+species), and let $D$ denote the observed data. Bayes' theorem states
+
+\begin{equation} \label{eq:bayes_prop}
+    P(\theta \mid D) = \frac{P(\theta) \; P(D \mid \theta)}{P(D)}, \quad \text{where}
+\end{equation}
+
+\begin{itemize}
+    \item $P(\theta)$ is the \textbf{prior}, our educated belief about $\theta$
+          \textit{before} seeing the data,
+
+    \item $P(D \mid \theta)$ is the \textbf{likelihood}, how probable
+          it is to see D if $\theta$ is the true value,
+
+    \item $P(\theta \mid D)$ is the \textbf{posterior}, our updated
+          belief about $\theta$ \textit{after} seeing the data as
+          the goal of Bayesian inference, and
+
+    \item $P(D)$ is the \textbf{marginal likelihood} (or evidence),
+          a normalising constant ensuring the posterior is a valid
+          probability distribution. In practice it is often intractable,
+          motivating computational methods.
+\end{itemize}
+
+In general: \textit{posterior} $\propto$ \textit{likelihood} $\times$
+\textit{prior}.
+
+\section{A simple introductory example}
+
+Suppose a disease affects 1\% of the population. A test
+returns a positive in 90\% of actually affected patients, but
+a false positive in 5\% of healthy patients. A randomly chosen person
+tests positive. What is the probability they are actually affected?
+
+\begin{itemize}
+    \item $\theta$ = the person is ill, $h$ = the person is healthy, $D$ = the test is positive,
+    \item $P(\theta) = 0.01$ as baseline disease rate,
+    \item $P(D \mid \theta) = 0.90$ is the likelihood that the test is positive
+          given the person is ill,
+    \item $P(D)$, that a test is positive, is computed via the law of total probability:
+\end{itemize}
+\vspace{-1mm}
+\begin{equation}
+    P(D) = P(D \mid \theta)\,P(\theta)
+         + P(D \mid h)\,P(h)
+         = 0.90 \times 0.01 + 0.05 \times 0.99 = 0.0585.
+\end{equation}
+
+Bayes shows the test is unreliable due to a low prior (disease is rare), as
+\vspace{-1mm}
+\begin{equation}
+    P(\theta \mid D)
+        = \frac{0.01 \times 0.90}{0.0585}
+        \approx 0.154 = 15.4\% \quad \text{as actual probability}.
+\end{equation}
+
+
+
+
+
+
+%:----------------------------------------------------
+\section{A Forest Modelling Example}
+
+Suppose we seek $\theta$ as the estimation for the mean annual diameter
+increment of beech trees in a given region. We have $n$ field measurements $D = \{d_1, \ldots, d_n\}$.
+
+\begin{enumerate}
+\item \textbf{Prior.} Assume that previous studies suggest increments are
+          typically between 0.2 and 0.8 cm/year. We encode this as a
+          Gaussian prior:
+          \[
+              P(\theta) = \mathcal{N}(\mu_0,\, \sigma_0^2)
+              = \frac{1}{\sqrt{2\pi\sigma_0^2}}
+                \exp\!\left(-\frac{(\theta - \mu_0)^2}{2\sigma_0^2}\right)
+          \]
+          with $\mu_0 = 0.5$ and $\sigma_0 = 0.15$, chosen so that
+          roughly 95\% of the prior mass falls within
+          $\mu_0 \pm 2\sigma_0 = [0.2,\, 0.8]$, consistent with the
+          literature. These are \textbf{hyperparameters} fixed using domain knowledge
+          before seeing any data. Choosing them is called
+          \textbf{prior elicitation}, and is one of the genuinely
+          subjective steps in Bayesian inference.
+
+    \item \textbf{Likelihood.} Assuming each measurement is
+          independently drawn from a normal distribution with mean
+          $\theta$ and known variance $\sigma^2$:
+          \[
+              P(D \mid \theta) = \prod_{i=1}^{n}
+              \frac{1}{\sqrt{2\pi\sigma^2}}
+              \exp\!\left(-\frac{(d_i - \theta)^2}{2\sigma^2}\right)
+          \]
+
+\item \textbf{Posterior.} We start directly from Bayes' theorem:
+\[
+    P(\theta \mid D) = \frac{P(D \mid \theta)\; P(\theta)}{P(D)}
+\]
+$P(D)$ does not depend on $\theta$ so:
+\[
+    P(\theta \mid D) \;\propto\; P(D \mid \theta)\; P(\theta)
+\]
+Substituting the likelihood and prior from the steps before:
+\[
+    P(\theta \mid D)
+    \;\propto\;
+    \left(
+      \prod_{i=1}^{n}
+      \frac{1}{\sqrt{2\pi\sigma^2}}
+      \exp\!\left(-\frac{(d_i-\theta)^2}{2\sigma^2}\right)
+    \right)
+    \cdot
+    \frac{1}{\sqrt{2\pi\sigma_0^2}}
+    \exp\!\left(-\frac{(\theta-\mu_0)^2}{2\sigma_0^2}\right)
+\]
+The prefactors $\frac{1}{\sqrt{2\pi\sigma^2}}$ and
+$\frac{1}{\sqrt{2\pi\sigma_0^2}}$ do not depend on $\theta$, so we drop and merge
+\[
+    P(\theta \mid D)
+    \;\propto\;
+    \exp\!\left(
+        -\frac{1}{2\sigma^2}\sum_{i=1}^{n}(d_i - \theta)^2
+        -\frac{(\theta - \mu_0)^2}{2\sigma_0^2}
+    \right)
+\]
+Taking the logarithm to simplify, keeping proportionality
+\[
+    \ln P(\theta \mid D)
+    \;\propto\;
+    -\frac{1}{2\sigma^2}\sum_{i=1}^{n}(d_i - \theta)^2
+    -\frac{(\theta - \mu_0)^2}{2\sigma_0^2}
+\]
+Expanding the squares:
+\[
+    \sum_{i=1}^{n}(d_i - \theta)^2
+    = \sum_{i=1}^{n} d_i^2 - 2\theta\sum_{i=1}^{n} d_i + n\theta^2, \quad
+    (\theta - \mu_0)^2 = \theta^2 - 2\mu_0\theta + \mu_0^2
+\]
+Substituting, dropping terms without $\theta$, sorting:
+\[
+    \ln P(\theta \mid D)
+    \;\propto\;
+    -\frac{n\theta^2}{2\sigma^2}
+    +\frac{\theta \sum_{i=1}^{n} d_i}{\sigma^2}
+    -\frac{\theta^2}{2\sigma_0^2}
+    +\frac{\mu_0\,\theta}{\sigma_0^2}
+    \;\propto\;
+    -\frac{\theta^2}{2}
+     \underbrace{\left(\frac{n}{\sigma^2} + \frac{1}{\sigma_0^2}\right)}_{:=\; A}
+    +\;\theta\;
+     \underbrace{\left(\frac{\sum_{i=1}^n d_i}{\sigma^2}
+                      + \frac{\mu_0}{\sigma_0^2}\right)}_{:=\; B}
+\]
+This is a quadratic in $\theta$. A Gaussian
+$\mathcal{N}(\mu, \sigma^2)$ has log-density
+$-\frac{(\theta-\mu)^2}{2\sigma^2} \propto -\frac{\theta^2}{2\sigma^2}
++ \frac{\mu\,\theta}{\sigma^2}$,
+which is also a quadratic in $\theta$ with exactly this structure,
+so the posterior must be Gaussian too. To read off its mean and variance we complete the square.
+We factor out $-A/2$ from the quadratic:
+\[
+    -\frac{A}{2}\theta^2 + B\theta
+    = -\frac{A}{2}
+      \!\left(\theta^2 - \frac{2B}{A}\theta\right)
+\]
+We then add and subtract $\left(B/A\right)^2$ inside the bracket
+to form a perfect square, since
+$\theta^2 - \frac{2B}{A}\theta + \left(\frac{B}{A}\right)^2
+= \left(\theta - \frac{B}{A}\right)^2$:
+\[
+    = -\frac{A}{2}
+      \!\left(\theta - \frac{B}{A}\right)^{\!2}
+      + \frac{B^2}{2A}
+\]
+The term $\frac{B^2}{2A}$ is again constant in $\theta$ and vanishes
+into $\propto$, leaving directly:
+\[
+    P(\theta \mid D)
+    \;\propto\;
+    \exp\!\left(-\frac{\left(\theta - B/A\right)^2}{2/A}\right)
+\]
+Comparing this with the standard Gaussian kernel
+$\exp\!\left(-\frac{(\theta-\mu)^2}{2\sigma^2}\right)$,
+we can directly read off mean $\mu_\text{post}= B/A$ and variance $\sigma_\text{post}^2 = 1/A$. Using the definitions of A and B:
+\[
+    \boxed{
+    P(\theta \mid D) = \mathcal{N}(\mu_\text{post},\;
+    \sigma_\text{post}^2), \quad
+    \sigma_\text{post}^2
+        = \left(\frac{n}{\sigma^2}+\frac{1}{\sigma_0^2}\right)^{\!-1},
+    \quad
+    \mu_\text{post}
+        = \sigma_\text{post}^2\!
+          \left(\frac{\sum_{i=1}^n d_i}{\sigma^2}
+               +\frac{\mu_0}{\sigma_0^2}\right)
+    }
+\]
+The posterior precision $1/\sigma_\text{post}^2$ is the sum of the
+data precision and the prior precision. The posterior mean is a
+precision-weighted average of the observed mean and $\mu_0$: with
+little data the prior dominates; with much data the observations
+take over.
+
+\end{enumerate}
+
+\subsection{Numerical Example}
+Let there be
+$n = 5$ field measurements $D = \{0.52, 0.61, 0.55, 0.48, 0.59\}$,
+so $\sum_{i=1}^n d_i = 2.75$, known measurement noise $\sigma^2 = 0.01$,
+and prior hyperparameters $\mu_0 = 0.5$, $\sigma_0^2 = 0.0225$.
+Computing $A$ and $B$:
+\[
+    A = \frac{n}{\sigma^2} + \frac{1}{\sigma_0^2}
+      = \frac{5}{0.01} + \frac{1}{0.0225}
+      \approx 544.4, \quad
+    B = \frac{\sum_{i=1}^n d_i}{\sigma^2} + \frac{\mu_0}{\sigma_0^2}
+      = \frac{2.75}{0.01} + \frac{0.5}{0.0225}
+      \approx 297.2.
+\]
+The posterior variance and mean follow as
+\[
+    \sigma_\text{post}^2 = \frac{1}{A} \approx \frac{1}{544.4} \approx 0.00184,
+    \qquad
+    \mu_\text{post} = \frac{B}{A} \approx \frac{297.2}{544.4} \approx 0.546 \text{ cm/year}.
+\]
+The observed sample mean is $2.75/5 = 0.55$ and the prior mean is $0.50$.
+The posterior mean $\mu_\text{post} \approx 0.546$ lies between the two,
+pulled slightly toward the prior; as expected with only five observations.
+With more data the posterior would converge toward the sample mean.
+
+
+
+%:----------------------------------------------------
+\section{Why Bayesian Methods Matter in Ecology}
+
+Ecological systems are inherently uncertain, data is often
+noisy, but prior knowledge from field ecology is rich. Bayesian methods
+are particularly well-suited because the posterior is a full distribution 
+rather than a point estimate.
+
+A 95\% credible interval $[a, b]$ means: given the data and prior,
+we are 95\% certain that $\theta \in [a, b]$, a much more
+intuitive statement than a frequentist confidence interval, which
+only asserts that if the experiment were repeated infinitely many
+times, 95\% of the intervals constructed by that procedure would
+contain the true value of $\theta$.
+
+Bayesian hierarchical
+models (also called mixed-effects or multilevel models) let
+parameters vary across sites while pooling information across
+them, directly expressed as nested priors:
+\[
+P(\theta_s \mid \mu, \sigma) \; P(\mu) \; P(\sigma)
+\]
+where $\theta_s$ is the site-specific parameter, and $\mu$,
+$\sigma$ are hyperparameters with their own priors.
+
+The marginal
+likelihood $P(D)$ can be used to compare competing models
+(e.g.\ different tree growth functions) via the Bayes factor:
+\[
+    \text{BF}_{12} = \frac{P(D \mid \text{Model 1})}
+                        {P(D \mid \text{Model 2})}.
+\]
+
+%:----------------------------------------------------
+\section{Markov Chain Monte Carlo}
+
+From Bayes' theorem, we had $P(\theta \mid D) = \frac{P(D \mid \theta)\,P(\theta)}{P(D)}$.
+For this to be a valid probability distribution, the numerator must
+integrate to 1 over all possible values of $\theta$. Enforcing this
+normalisation condition gives $P(D)$ explicitly as:
+\[
+    P(D) = \int P(D \mid \theta) \; P(\theta) \; d\theta
+\]
+This is simply the law of total probability: we marginalise out
+$\theta$ by summing (integrating) the joint probability
+$P(D \mid \theta)\,P(\theta)$ over all values it
+could take. For a model with many parameters this integral is
+intractable: it lives in a high-dimensional space and has no closed
+form. Even in our one-parameter example it is only tractable 
+because both the prior and likelihood are Gaussian, a
+\textbf{conjugacy} that rarely holds in practice.
+
+\textbf{Markov Chain Monte Carlo (MCMC)} sidesteps this problem by only taking
+\textit{samples} from it. Suppose we are currently at parameter value $\theta$ and propose
+a move to $\theta'$. We want to know whether $\theta'$ is more or
+less probable under the posterior. Form the ratio:
+
+\begin{equation}
+    r = \frac{P(\theta' \mid D)}{P(\theta \mid D)}
+      = \frac{P(D \mid \theta') \; P(\theta')}{P(D \mid \theta) \; P(\theta)}
+    \label{eq:ratio}
+\end{equation}
+
+$P(D)$ appears in both numerator and denominator and cancels
+exactly. We can therefore evaluate $r$ using only the likelihood
+and the prior, both of which we can compute directly,
+without ever knowing $P(D)$.
+
+\subsection{Monte Carlo Integration}
+
+Many quantities of interest in Bayesian inference are expectations
+of the form
+\[
+    \mathbb{E}[f(\theta)] = \int f(\theta)\, P(\theta \mid D)\, d\theta,
+\]
+\textbf{Monte Carlo} draws $N$ independent
+samples $\theta^{(1)}, \ldots, \theta^{(N)}$ from the target
+distribution, replacing the integral with a sample average:
+\[
+    \mathbb{E}[f(\theta)] \approx \frac{1}{N} \sum_{t=1}^{N} f\!\left(\theta^{(t)}\right).
+\]
+By the law of large numbers this estimate converges to the true
+expectation as $N \to \infty$, regardless of the dimension of
+$\theta$. The difficulty is that drawing independent samples from
+$P(\theta \mid D)$ directly is also intractable, which is
+where Markov chains come in.
+
+\subsection{Markov Chains}
+
+A \textbf{Markov chain} is a sequence of random variables
+$\theta^{(1)}, \theta^{(2)}, \ldots$ with the property that each
+state depends only on the one immediately before it:
+\[
+    P\!\left(\theta^{(t+1)} \mid \theta^{(t)}, \theta^{(t-1)}, \ldots\right)
+    = P\!\left(\theta^{(t+1)} \mid \theta^{(t)}\right).
+\]
+Under mild conditions, a Markov chain converges to a unique
+\textbf{stationary distribution} $\pi(\theta)$, meaning that once
+the chain has run long enough, its samples look as if they were
+drawn from $\pi$. The idea behind MCMC is to \textit{construct} a
+chain whose stationary distribution is exactly the posterior
+$P(\theta \mid D)$, so that running the chain produces samples we
+can use for Monte Carlo integration without ever computing
+$P(D)$.
+
+\subsection{The Metropolis-Hastings algorithm}
+
+We build a Markov chain whose \textit{stationary distribution} is
+the posterior $P(\theta \mid D)$. This is guaranteed by enforcing
+\textbf{detailed balance} at every step:
+\[
+    P(\theta \mid D) \; T(\theta \to \theta')
+    = P(\theta' \mid D) \; T(\theta' \to \theta)
+\]
+where $T$ is the transition kernel. Intuitively, this says that
+probability flux from $\theta$ to $\theta'$ must equal the flux
+in the reverse direction, so the chain cannot drift away from the
+posterior. After a \textit{burn-in} period, during which the
+chain travels from its arbitrary starting point towards the high
+probability region, subsequent samples are draws from
+posterior.
+
+At each step we draw a candidate $\theta'$ from a
+\textbf{proposal distribution} $q(\theta' \mid \theta^{(t-1)})$,
+which can be any distribution we can sample from. A common choice
+is a symmetric Gaussian centred at the current state,
+$q(\theta' \mid \theta) = \mathcal{N}(\theta,\, \sigma_\text{prop}^2)$,
+so proposals are small random perturbations of the current value.
+We then decide whether to accept or reject $\theta'$ by computing
+\vspace{-2mm}
+\[
+    r = \frac{P(D \mid \theta') \; P(\theta')}{P(D \mid \theta^{(t-1)}) \; P(\theta^{(t-1)})}
+        \cdot
+        \frac{q(\theta^{(t-1)} \mid \theta')}{q(\theta' \mid \theta^{(t-1)})},
+\]
+
+where the first factor is the posterior ratio from
+equation~\eqref{eq:ratio} and the second factor corrects for any
+asymmetry in the proposal: if $q$ is more likely to propose
+$\theta'$ from $\theta$ than vice versa, the candidate is
+down-weighted to preserve detailed balance.
+
+If $r \geq 1$ the candidate is more probable under the posterior
+and is always accepted. If $r < 1$ it is accepted with probability
+$r$, allowing the chain to occasionally move to less probable
+regions and avoid getting trapped.
+
+\begin{algorithm}[H]
+\caption{Metropolis-Hastings}
+\begin{algorithmic}[1]
+\State Initialise $\theta^{(0)}$ arbitrarily
+\For{$t = 1, 2, \ldots, N$}
+    \State Propose $\theta' \sim q(\theta' \mid \theta^{(t-1)})$
+    \State Compute $r = \dfrac{P(D \mid \theta')\;P(\theta')}
+                               {P(D \mid \theta^{(t-1)})\;P(\theta^{(t-1)})}
+                        \cdot
+                        \dfrac{q(\theta^{(t-1)} \mid \theta')}
+                               {q(\theta' \mid \theta^{(t-1)})}$
+    \State Draw $u \sim \mathrm{Uniform}(0, 1)$
+    \If{$u < \min(1,\, r)$}
+        \State $\theta^{(t)} \leftarrow \theta'$ \quad (accept)
+    \Else
+        \State $\theta^{(t)} \leftarrow \theta^{(t-1)}$ \quad (reject, stay)
+    \EndIf
+\EndFor
+\State \Return $\{\theta^{(1)}, \ldots, \theta^{(N)}\}$
+\end{algorithmic}
+\end{algorithm}
+
+Because the chain moves step by step, consecutive samples are
+\textit{correlated}, so the effective sample size is smaller than
+$N$. Two diagnostics help assess whether the chain has
+converged and is mixing well:
+
+\begin{itemize}
+    \item \textbf{Trace plot}: plot $\theta^{(t)}$ vs.\ $t$. After
+          burn-in this should resemble white noise around a stable
+          mean, with no visible trend or slow drift.
+
+    \item \textbf{$\hat{R}$ (Gelman-Rubin statistic)}: run multiple
+          chains from different starting points and compare their
+          variance. $\hat{R} \approx 1$ indicates that all chains have
+          converged to the same distribution.
+\end{itemize}
+
+%:----------------------------------------------------
+\section{MCMC in Practice}
+
+We now apply everything from the previous sections to the beech tree
+growth model. The goal is to estimate $\theta$, the mean annual
+diameter increment (cm/year), given noisy field measurements and a
+prior belief from the literature.
+
+\paragraph{Setup.}
+The true mean increment is chosen to be $\theta_\text{true} = 0.52$ cm/year.
+We draw $n = 20$ measurements from
+$\mathcal{N}(\theta_\text{true},\, \sigma^2)$ with known observation
+noise $\sigma = 0.10$. The prior is
+$P(\theta) = \mathcal{N}(\mu_0,\, \sigma_0^2)$
+with $\mu_0 = 0.40$ and $\sigma_0 = 0.15$.
+The prior mean is deliberately offset from the truth to make the
+data-update visible, so we will see the posterior pulled away from
+$\mu_0 = 0.40$ towards the true value.
+
+We run the Metropolis-Hastings algorithm for $N = 50.000$ iterations
+with a symmetric Gaussian proposal
+$q(\theta' \mid \theta) = \mathcal{N}(\theta,\, \sigma_\text{prop}^2)$,
+$\sigma_\text{prop} = 0.05$. With
+$q(\theta' \mid \theta) = q(\theta \mid \theta')$ due to symmetry,
+the acceptance ratio is simpler to calculate below.
+
+\paragraph{What to evaluate.}
+From Bayes' theorem we have
+\[
+    P(\theta \mid D) \;\propto\; P(D \mid \theta)\; P(\theta).
+\]
+ $P(D)$ cancels in the Metropolis-Hastings
+acceptance ratio
+\[
+    r = \frac{P(\theta' \mid D)}{P(\theta \mid D)}
+      = \frac{P(D \mid \theta')\; P(\theta')}{P(D \mid \theta)\; P(\theta)}.
+\]
+At every step we only need to evaluate the \emph{unnormalised}
+posterior, i.e.\ the likelihood times the prior, for the proposed
+value $\theta'$ and the current value $\theta$.
+
+\paragraph{Log-posterior.}
+In practice we work in log-space to avoid floating-point underflow:
+with $n = 20$ measurements, the likelihood
+$P(D \mid \theta) = \prod_{i=1}^{n} \mathcal{N}(d_i;\, \theta, \sigma^2)$
+is a product of 20 small numbers that can underflow to zero in basic
+double precision. Taking the logarithm turns the product into a sum.
+Dropping all additive constants that do not depend on $\theta$, which
+would also cancel in the ratio $r$:
+\[
+    P(\theta \mid D)
+    \;\propto\;
+    \underbrace{\exp\!\left(-\frac{1}{2\sigma^2}\sum_{i=1}^{n}(d_i - \theta)^2\right)}_%
+    {P(D\mid\theta)\text{: likelihood}}
+    \;\cdot\;
+    \underbrace{\exp\!\left(-\frac{(\theta - \mu_0)^2}{2\sigma_0^2}\right)}_%
+    {P(\theta)\text{: prior}}
+\]
+\[
+    \ln P(\theta \mid D)
+    \;\propto\;
+    \underbrace{-\frac{1}{2\sigma^2}\sum_{i=1}^{n}(d_i - \theta)^2}_%
+    {\ln P(D\mid\theta)\text{: log-likelihood}}
+    \;
+    \underbrace{-\frac{(\theta - \mu_0)^2}{2\sigma_0^2}}_{\ln P(\theta)\text{: log-prior}}.
+\]
+The log-likelihood penalises $\theta$ values that are far from the
+observed data; the log-prior penalises values far from $\mu_0$.
+Their sum is the log of the unnormalised posterior.
+
+\paragraph{Acceptance step.}
+At each iteration $t$ the algorithm from Section 5 proposes a candidate
+$\theta' \sim \mathcal{N}(\theta^{(t-1)},\, \sigma_\text{prop}^2)$
+and decides whether to accept it. Because the proposal is symmetric,
+the correction factor $q(\theta^{(t-1)} \mid \theta') /
+q(\theta' \mid \theta^{(t-1)})$ equals 1 and drops out.
+The log-acceptance ratio therefore simplifies to:
+\[
+    \ln r = \ln P(\theta' \mid D) - \ln P(\theta^{(t-1)} \mid D).
+\]
+We then draw $u \sim \mathrm{Uniform}(0,1)$ and accept $\theta'$
+whenever $\ln u < \ln r$, which is mathematically identical to
+$u < \min(1, r)$ but numerically stable. Intuitively:
+\begin{itemize}
+    \item If $\theta'$ has a \emph{higher} log-posterior than the current
+          state ($\ln r > 0$, so $r > 1$), we always accept and the chain
+          moves to a more probable region.
+    \item If $\theta'$ has a \emph{lower} log-posterior ($\ln r < 0$,
+          so $r < 1$), we still accept with probability $r$. This
+          randomness prevents the chain from getting trapped at a local
+          mode.
+    \item If rejected, the chain stays at $\theta^{(t-1)}$, which is
+          also recorded as a sample.
+\end{itemize}
+
+\paragraph{Burn-in.}
+The first $5\,000$ samples are discarded. Starting from
+$\theta^{(0)} = \mu_0 = 0.40$, the chain begins far from the
+high-probability region of the posterior. During burn-in, it
+\emph{travels} toward that region; these early samples do not
+represent the posterior and must be thrown away. After burn-in,
+the remaining samples can be treated as draws from
+$P(\theta \mid D)$.
+
+\paragraph{Results.}
+After discarding burn-in, the $45\,000$ retained samples yield:
+\[
+    \hat{\mu}_\text{MCMC} \approx 0.517, \qquad
+    \hat{\sigma}_\text{MCMC} \approx 0.022, \qquad
+    \text{95\% credible interval} \approx [0.474,\; 0.560].
+\]
+The posterior mean $0.517$ lies between the prior mean $\mu_0 = 0.40$
+and the data mean $\approx 0.52$, pulled towards the data because
+$n = 20$ observations provide substantial evidence.
+The 95\% credible interval is computed from the posterior
+$\mathcal{N}(\mu_\text{post},\, \sigma_\text{post}^2)$, since 95\% of
+a Gaussian's mass falls within $\pm 1.96$ standard deviations of the mean:
+\[
+    [\,\mu_\text{post} - 1.96\cdot\sigma_\text{post},\quad
+       \mu_\text{post} + 1.96\cdot\sigma_\text{post}\,]
+    = [\,0.517 - 1.96\times 0.022,\quad 0.517 + 1.96\times 0.022\,]
+    \approx [0.474,\; 0.560].
+\]
+This means: given the data and prior, there is a 95\% probability
+that $\theta$ lies in $[0.474,\, 0.560]$. In the general MCMC case,
+where the posterior is not analytically Gaussian, the same interval
+is obtained empirically by sorting the retained samples and taking
+the 2.5th and 97.5th percentiles. Both approaches agree here because
+the posterior happens to be Gaussian.
+The acceptance rate is approximately $60\%$, close to the theoretical
+optimum of $44\%$ for a one-dimensional Gaussian target.
+
+\paragraph{Analytic verification.}
+Because both the prior and the likelihood are Gaussian, the posterior
+is also Gaussian - this is the conjugate case derived in Section~3.
+It gives us an exact solution to check against:
+\[
+    \sigma_\text{post}^2
+        = \left(\frac{n}{\sigma^2}+\frac{1}{\sigma_0^2}\right)^{\!-1}
+        = \left(\frac{20}{0.01}+\frac{1}{0.0225}\right)^{\!-1}
+        \approx 4.89 \times 10^{-4},
+    \qquad
+    \sigma_\text{post} \approx 0.022,
+\]
+\[
+    \mu_\text{post}
+        = \sigma_\text{post}^2\!
+          \left(\frac{\sum_{i=1}^n d_i}{\sigma^2}
+               +\frac{\mu_0}{\sigma_0^2}\right)
+        \approx 0.517 \text{ cm/year}.
+\]
+The MCMC estimates match the analytic values almost exactly,
+confirming that the chain has converged. In practice, most ecological
+models are \emph{not} conjugate. The likelihood may be non-Gaussian
+(e.g.\ count data, spatial dependence), and no
+closed-form posterior exists. In those cases MCMC is the only
+available approach, and the Metropolis-Hastings algorithm applies
+without any modification.
+
+\paragraph{Summary}
+MCMC returns a large array of numbers $\{\theta^{(1)}, \ldots, \theta^{(N)}\}$, each a value
+of $\theta$ that the chain visited after burn-in. Because the chain is
+constructed to visit regions proportionally to their posterior
+probability, this array \emph{is} the posterior, represented as a
+histogram rather than an equation. Any summary statistic follows by
+plain descriptive statistics on that array:
+\[
+    \hat{\mu}_\text{post} = \frac{1}{N}\sum_{t=1}^{N}\theta^{(t)},
+    \qquad
+    \hat{\sigma}^2_\text{post}
+        = \frac{1}{N}\sum_{t=1}^{N}\!\left(\theta^{(t)}-\hat{\mu}_\text{post}\right)^{\!2},
+\]
+and the 95\% credible interval is simply the 2.5th and 97.5th
+percentiles of the sample array. This is a direct application of
+Monte Carlo integration: for any function $f$,
+\[
+    \mathbb{E}[f(\theta)] \approx \frac{1}{N}\sum_{t=1}^{N}f\!\left(\theta^{(t)}\right).
+\]
+Setting $f(\theta)=\theta$ gives the mean; setting
+$f(\theta)=(\theta-\hat{\mu})^2$ gives the variance. No analytical
+derivation is required. This is precisely why MCMC is indispensable
+for complex ecological models: even when the posterior has no closed
+form, all quantities of interest can be estimated directly from the
+samples.
+
+\end{document}
